@@ -209,7 +209,7 @@
   ];
   const BY = Object.fromEntries(KINDS.map((k) => [k.id, k]));
   const kindsOf = (lv) => KINDS.filter((k) => k.lv === lv).map((k) => k.id);
-  const numKindsOf = (lv) => KINDS.filter((k) => k.lv === lv && k.col !== "shiryo").map((k) => k.id);
+  const coreKindsOf = (lv) => KINDS.filter((k) => k.lv === lv && (k.col === "goukei" || k.col === "tomeru")).map((k) => k.id);
 
   // part:seedOf:begin（shared-workflows の template/parts/data/seedOf.js の写し。ここでは直さない。node scripts/sync-template.mjs で写す）
   function seedOf(str) { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -227,9 +227,9 @@
   }
   const keyOf = (P) => `${P.kind}:${P.q}:${P.msg || ""}:${P.st || ""}:${P.opts.slice().sort().join("/")}`;
 
-  // 今日の5問：やさしい2・ふつう2・むずかしい1（むずかしいは数の問題から。核の「どこで止める」「合計」を毎日1問は遊ぶ）
+  // 今日の5問：やさしい2・ふつう2・むずかしい1（むずかしいは「合計」か「どこで止める」から。核を毎日1問は遊ぶ。PR #1 の CodeRabbit）
   function dailyTags(date) {
-    const R = rng(seedOf("day:" + date)), e = pickN(R, kindsOf(0), 2), n = pickN(R, kindsOf(1), 2), h = pickN(R, numKindsOf(2), 1);
+    const R = rng(seedOf("day:" + date)), e = pickN(R, kindsOf(0), 2), n = pickN(R, kindsOf(1), 2), h = pickN(R, coreKindsOf(2), 1);
     return [...e, ...n, ...h].map((id, i) => `${id}|${date}:d${i}`);
   }
   function hardTags(date) {
@@ -237,6 +237,6 @@
     return h.map((id, i) => `${id}|${date}:h${i}`);
   }
 
-  const TSE = { KINDS, BY, GROUPS, GWHY, MSGS, BADGE, FROM, LV, SRC, MEDIA, comma, ppl, pw, sum, saved, firstOver, kindsOf, numKindsOf, seedOf, rng, make, keyOf, dailyTags, hardTags, pickN };
+  const TSE = { KINDS, BY, GROUPS, GWHY, MSGS, BADGE, FROM, LV, SRC, MEDIA, comma, ppl, pw, sum, saved, firstOver, kindsOf, coreKindsOf, seedOf, rng, make, keyOf, dailyTags, hardTags, pickN };
   if (typeof module !== "undefined" && module.exports) module.exports = TSE; else root.TSE = TSE;
 })(typeof self !== "undefined" ? self : this);

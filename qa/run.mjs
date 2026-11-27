@@ -11,6 +11,7 @@ import path from "node:path";
 import { checkTransfer } from "./transfer-check.mjs";
 import { checkSwStall } from "./sw-check.mjs";
 import { checkDepth } from "./depth-check.mjs";
+import { checkCore } from "./core-check.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const results = [];
@@ -18,7 +19,7 @@ const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail: 
 const firstClose = async (q) => { if (await q.locator("#howto[open]").count()) await q.click("#howto-ok"); if (await q.evaluate(() => !!(window.Core && Core.coach && Core.coach.active()))) { await q.evaluate(() => { Core.coach.leave(); scrollTo(0, 0); }); await q.waitForTimeout(100); } }; // はじめての練習の吹き出しをやめてホームへ（sync-template の migrateFirstQa が足した）
 const G = createRequire(import.meta.url)(path.join(root, "data.js"));
 
-const PINS = "s2_4:0:8.32:1.1.ng,s3_3:2:9.40:10.2.mi,t2_4:1:16.30.9:7.2.ok,s2_8:0:16.128.512:7.1.mi,t3_4:1:81.120.364:8.2.mi,c3_1000:0:4:2.1.ng,fkumamoto:2:0.2.1,fjinko:0:3.0.1;fkoteki:1:1.0,s4_2:1:8.64:4.2.mi,t2_2:2:4.5.6:8.0.ok,t2_4:1:16.9.63:7.0.mi,c2_100:0:4:9.0.ok,v3_2_5:1:27.9.12:4.2.mi,v3_1_5:0:81.121.363:1.2.ng,fkumamoto:1:0.2.3;s2_3:2:6.5:1.0.ng,s2_4:2:8.6:3.0.mi,t2_3:0:8.31.14:3.2.mi,s2_10:1:20.2048.12:7.1.mi,v2_1_6:0:32.126.30:1.2.ng,t5_3:0:125.781.16:4.0.mi,c3_100:1:1:6.2.ok,t10_5:1:100000.51.111110:0.2.ng"; // 過去の日の問題の印（変わったら過去の日の問題が変わった印。種類・言い方は足すだけでも変わる）
+const PINS = "s2_4:0:8.32:1.1.ng,s3_3:2:9.40:10.2.mi,t2_4:1:16.30.9:7.2.ok,s2_8:0:16.128.512:7.1.mi,t2_10:1:1024.21.4095:7.0.mi,c3_1000:0:4:2.1.ng,fkumamoto:2:0.2.1,fjinko:0:3.0.1;fkoteki:1:1.0,s4_2:1:8.64:4.2.mi,t2_2:2:4.5.6:8.0.ok,t2_4:1:16.9.63:7.0.mi,t3_5:1:243.1093.16:0.2.ng,v3_2_5:1:27.9.12:4.2.mi,v3_1_5:0:81.121.363:1.2.ng,fkumamoto:1:0.2.3;s2_3:2:6.5:1.0.ng,s2_4:2:8.6:3.0.mi,t2_3:0:8.31.14:3.2.mi,s2_10:1:20.2048.12:7.1.mi,v3_1_5:1:81.363.12:1.2.mi,t5_3:0:125.781.16:4.0.mi,c3_100:1:1:6.2.ok,t10_5:1:100000.51.111110:0.2.ng"; // 過去の日の問題の印（変わったら過去の日の問題が変わった印。種類・言い方は足すだけでも変わる）
 // ---- 1. 問題の作り方（ブラウザを使わない）----
 // 検算（ゲームとは別に書いた。data.js の答えがこれと合うかを見る。式でなく、1段ずつかけ算・足し算して数える。決まりは共有フォルダ games/tenso-edawakare-research.md）
 // 0段目のあなたが N 人に転送し、届いた人もみな N 人に転送する（ゲーム用の単純化。実測ではない）
@@ -82,12 +83,13 @@ check("検算：1人が3人に転送すると10段目は59,049人（核の一言
     const d = new Date(d0 + i * 864e5).toISOString().slice(0, 10), dl = G.dailyTags(d), hl = G.hardTags(d);
     const dk = dl.map((t) => t.split("|")[0]), hk = hl.map((t) => t.split("|")[0]);
     if (dl.length !== 5 || new Set(dk).size !== 5 || dk.map((k) => G.BY[k].lv).join() !== "0,0,1,1,2") bad.push(d + " 今日");
+    if (!["goukei", "tomeru"].includes(G.BY[dk[4]].col)) bad.push(d + " むずかしい枠が合計・どこで止めるでない");
     if (hl.length !== 3 || new Set(hk).size !== 3 || hk.some((k) => G.BY[k].lv !== 2) || hk.includes(dk[4])) bad.push(d + " 上級");
     if (JSON.stringify(dl) !== JSON.stringify(G.dailyTags(d))) bad.push(d + " 同じにならない");
     if (dk.join() === prev) sameAsPrev++; prev = dk.join();
     if (i < 365) [...dk, ...hk].forEach((k) => cover.add(k));
   }
-  check("今日の5問（やさしい2・ふつう2・むずかしい1、種類は重ねない）と上級（むずかしい3・今日のむずかしいと別）を3年分作れる", bad.length === 0, bad.slice(0, 5).join(","));
+  check("今日の5問（やさしい2・ふつう2・むずかしい1（合計かどこで止める＝核を毎日1問）、種類は重ねない）と上級（むずかしい3・今日のむずかしいと別）を3年分作れる", bad.length === 0, bad.slice(0, 5).join(","));
   check("1年のうちに全部の種類が出る・前の日と同じ組の日が少ない", cover.size === G.KINDS.length && sameAsPrev < 20, `${cover.size}種類・前の日と同じ ${sameAsPrev}日`);
   // 過去の日の問題が変わらない（data.js を直したときの見張り。値は 2026-11-27 に作ったもの）
   // 1問目だけでなく、いくつかの日の5問と上級3問の全部（種類と言い方・選び肢の印）を見る（種類や言い方を足すと、全部の日の問題が変わるため。shigaisen-yomi #1 の CodeRabbit）
@@ -141,10 +143,14 @@ await new Promise((r) => server.once("listening", r));
 const url = `http://127.0.0.1:${server.address().port}/`;
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 const errors = [];
-const TODAY = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+// 時計は検査のはじめの時刻で止める（日本時間の0時をまたいでも、node の TODAY とブラウザの今日がずれない。PR #1 の CodeRabbit）
+// 時計は止めるが、日付は外から変えられる（QA_DATE=YYYY-MM-DD か QA_SHIFT_DAYS=n。落ちた日の再現用）
+const FIXED = process.env.QA_DATE ? Date.parse(process.env.QA_DATE + "T03:00:00Z") : Date.now() + (Number(process.env.QA_SHIFT_DAYS) || 0) * 864e5;
+const TODAY = new Date(FIXED + 9 * 3600e3).toISOString().slice(0, 10);
 const dayBefore = (n) => new Date(Date.parse(TODAY) - n * 864e5).toISOString().slice(0, 10);
 async function newPage(w = 390, ctx) {
   const c = ctx || await browser.newContext({ viewport: { width: w, height: 800 } });
+  if (!c.__fixed) { await c.clock.setFixedTime(FIXED); c.__fixed = true; }
   await c.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
   const p = await c.newPage();
   p.on("pageerror", (e) => errors.push(e.message));
@@ -170,8 +176,8 @@ try {
   const p = await newPage();
   check("はじめて開くと遊び方が出る", await p.locator("#core-coach").waitFor({ timeout: 3000 }).then(() => true, () => false));
   { const c = await browser.newContext(); const r = await c.newPage(); await r.goto(url); await r.waitForTimeout(200); let again = 0;
-    for (let i = 0; i < 10; i++) { await r.evaluate(() => localStorage.clear()); await r.reload(); await r.waitForTimeout(200); await r.keyboard.press("Escape"); await r.reload(); await r.waitForTimeout(200); again += await r.locator("#howto[open]").count(); }
-    check("遊び方を Esc で閉じてすぐ読み直しても出ない（10回）", again === 0);
+    let shut = 0; for (let i = 0; i < 10; i++) { await r.evaluate(() => localStorage.clear()); await r.reload(); await r.locator("#core-coach").waitFor({ timeout: 3000 }).catch(() => {}); await r.keyboard.press("Escape"); await r.waitForTimeout(200); if (!(await r.evaluate(() => !!(window.Core && Core.coach && Core.coach.active()))) && await r.locator("#go-d").count()) shut++; await r.reload(); await r.waitForTimeout(200); again += await r.locator("#howto[open]").count() + (await r.evaluate(() => !!(window.Core && Core.coach && Core.coach.active())) ? 1 : 0); }
+    check("はじめての案内は Esc で閉じてホームにもどり、すぐ読み直しても出ない（10回）", again === 0 && shut === 10, `${shut}/10`);
   { const c = await browser.newContext(); const r = await c.newPage(); const big = []; // 題が h1{flex:1} で縦に伸び（伸びない形と比べて4pxより高ければ失敗）、iPad の縦で大きなすき間が出た（shared-workflows incidents/2026-11-07-title-stretched.md）
     for (const [w, h] of [[820, 1180], [390, 844], [1280, 800]]) { await r.setViewportSize({ width: w, height: h }); await r.goto(url); await r.waitForTimeout(200); await r.keyboard.press("Escape"); await r.waitForTimeout(100);
       const v = await r.evaluate(() => { const e = [...document.querySelectorAll(".title")].find((x) => x.offsetParent); if (!e) return null; const h = e.getBoundingClientRect().height; const f = e.style.flex; e.style.flex = "none"; const n = e.getBoundingClientRect().height; e.style.flex = f; return h - n; });
@@ -321,16 +327,16 @@ try {
 
   // カレンダー・あとから：過去の日の記録を置いて見る。第1回から日がたっていなくても見られるよう、時計を10日進める
   {
-    const SHIFT = 10 * 864e5, TODAY = new Date(Date.now() + 9 * 3600e3 + SHIFT).toISOString().slice(0, 10), dayBefore = (n) => new Date(Date.parse(TODAY) - n * 864e5).toISOString().slice(0, 10);
+    const SHIFT = 10 * 864e5, TODAY = new Date(FIXED + 9 * 3600e3 + SHIFT).toISOString().slice(0, 10), dayBefore = (n) => new Date(Date.parse(TODAY) - n * 864e5).toISOString().slice(0, 10);
     const cx = await browser.newContext({ viewport: { width: 390, height: 800 } });
-    await cx.addInitScript((sh) => { const o = Date.now; Date.now = () => o() + sh; }, SHIFT);
+    cx.__fixed = true; await cx.clock.setFixedTime(FIXED + SHIFT);
     const q = await newPage(390, cx);
     await q.evaluate(([d2, d3]) => { localStorage.setItem("tse-v1", JSON.stringify({ v: 1, tut: true, days: { [d2]: { m: [0, 0, 0, 0, 0], k: [] }, [d3]: { m: [1, 0, 0, 2, 0], k: [] } }, hdays: {}, adays: {}, dex: {}, runs: {}, kofi: {}, ach: {}, ebest: 0 })); }, [dayBefore(2), dayBefore(3)]);
     await q.reload(); await q.waitForTimeout(150);
     check("ホームの「続けて」は、きのうを休んだら — （休んだ日を責めない）", (await q.textContent(".stats")).includes("—"));
     await q.click("#go-cal");
     const lateList = await q.evaluate(() => __nm.lateDays(__nm.load()));
-    const exp = [1, 4, 5, 6, 7].map(dayBefore).filter((d) => d >= "2026-11-07");
+    const ep = (html.match(/EPOCH = "(\d{4}-\d\d-\d\d)"/) || [])[1], exp = [1, 4, 5, 6, 7].map(dayBefore).filter((d) => d >= ep); // 第1回（EPOCH）より前の日は出さない
     check("カレンダー：取りこぼした過去7日（第1回より後）を押せる", JSON.stringify(lateList) === JSON.stringify(exp), lateList.join(","));
     check("カレンダー：遊んだ日は★の数の文字も付く", (await q.locator(".cal .c.p3").count()) + (await q.locator(".cal .c.p2").count()) + (await q.locator(".cal .c.p1").count()) >= (dayBefore(3).slice(0, 7) === TODAY.slice(0, 7) ? 2 : 0));
     if (lateList.length) {
@@ -484,7 +490,7 @@ try {
     const bad = [], small = [];
     for (const [w, fs] of [[320, 3], [390, 2], [320, 1]]) {
       const q = await newPage(w); await closeHow(q);
-      await q.evaluate((fs) => localStorage.setItem("tse-fs", String(fs)), fs); await q.reload(); await q.waitForTimeout(150);
+      await q.evaluate((fs) => (localStorage.setItem("tse-fs", String(fs)), localStorage.setItem("a11y-v1", JSON.stringify({ ...JSON.parse(localStorage.getItem("a11y-v1") || "{}"), fs: undefined }))), fs); await q.reload(); await q.waitForTimeout(150);
       for (const go of [null, "#go-d", "solve", "#go-cal", "#go-dex", "#go-ach", "#go-e"]) {
         if (go === "solve") { await solve(q); }
         else if (go) { await q.goto(url); await q.waitForTimeout(100); await q.click(go); }
@@ -521,14 +527,16 @@ try {
     check("しやすいまちがいを選ぶと、わけを言う（3×4は足したとき・1段ごとに3倍／81人は4段目だけ・全部の段を足す／32人はいちばん先の段だけ）", m1.includes("3倍") && m2.includes("全部の段を足します") && m3.includes("いちばん先の段だけ"), `${m1} / ${m2} / ${m3}`);
     await q.context().close();
   }
-  // キーボードだけで遊べる（Tab と Enter）
+  // キーボードだけで遊べる（Tab で選び肢まで動いて Enter。focus() で直に移さない。PR #1 の CodeRabbit）
   {
     const q = await newPage(); await closeHow(q);
-    await q.focus("#go-d"); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
+    const tabTo = async (sel) => { for (let i = 0; i < 60; i++) { if (await q.evaluate((s) => !!document.activeElement && document.activeElement.matches(s), sel)) return true; await q.keyboard.press("Tab"); } return false; };
+    const r0 = await tabTo("#go-d"); await q.keyboard.press("Enter"); await q.waitForTimeout(150);
     const j = await ansIdx(q);
-    await q.focus(`.ch[data-j="${j}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(100);
-    if (await q.locator(".why button").count()) { await q.focus(`.why button[data-g="${await q.evaluate(() => __nm.cur().P.grp)}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(100); }
-    check("キーボードだけで選んで答えられる（2段目もキーボードで）", await q.locator(".verdict").count() === 1);
+    const r1 = await tabTo(`.ch[data-j="${j}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(150);
+    let r2 = true;
+    if (await q.locator(".why button").count()) { r2 = await tabTo(`.why button[data-g="${await q.evaluate(() => __nm.cur().P.grp)}"]`); await q.keyboard.press("Enter"); await q.waitForTimeout(150); }
+    check("キーボードだけで選んで答えられる（Tab でホームのボタン・1段目・2段目の選び肢まで動ける）", r0 && r1 && r2 && await q.locator(".verdict").count() === 1, `${r0}/${r1}/${r2}`);
     await q.context().close();
   }
 } catch (e) { check("ブラウザでの検査が最後まで動く", false, e.stack.split("\n").slice(0, 3).join(" ")); }
@@ -562,6 +570,8 @@ try {
   await q.close(); }
 { const bad = G.KINDS.filter((k) => { for (let i = 0; i < 200; i++) { const P = G.make(`${k.id}|g${i}`); if (k.col !== "shiryo" ? !G.GROUPS[P.grp] : P.grp) return true; } return false; }).map((k) => k.id);
   check("2段目「この知らせ、あなたならどうする？」：数の問題はどれも3つのどれか。資料の問題には2段目が無い", bad.length === 0 && Object.keys(G.GROUPS).join() === "kakunin,tomeru,hiromeru", bad.join(",")); }
+// game-core（はじめての案内・不具合の帯・感想。shared-workflows template/qa/core-check.mjs）。案内は自分の検査で見たので first: false（PR #1 の CodeRabbit）
+try { await checkCore({ browser, url, check, first: false }); } catch (e) { check("game-core の検査が最後まで動く", false, e.message.split("\n")[0]); }
 // 引き継ぎコード（shared-workflows template/qa/transfer-check.mjs）
 try {
   const sample = { "tse-v1": JSON.stringify({ v: 1, tut: true, days: { "2026-11-13": { m: [0, 1, 0, 0, 2], k: ["t3_4", "s3_3", "s2_3", "s10_2", "s2_4"] } }, hdays: {}, adays: {}, dex: { t3_4: 1, s10_2: 1, s2_3: 1, t2_2: 1, t3_2: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 7, t: 1 }), "tse-fs": "3", "tse-depth": JSON.stringify({ v: 1, rv: { "t3_4|x1": { s: 1, due: "2026-11-20", t: 5 } } }) }; // 復習の記録も引き継ぐかを見る（CodeRabbit shindo-yomi#1）
