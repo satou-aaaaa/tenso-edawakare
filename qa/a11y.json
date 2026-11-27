@@ -1,0 +1,34 @@
+{
+  "screens": [
+    {
+      "name": "今日の5問",
+      "click": [
+        "#go-d"
+      ]
+    },
+    {
+      "name": "練習",
+      "click": [
+        "#go-p"
+      ]
+    },
+    {
+      "name": "枝分かれを試す",
+      "click": [
+        "#go-lab"
+      ]
+    },
+    {
+      "name": "まなび帳",
+      "click": [
+        "#go-dex"
+      ]
+    },
+    {
+      "name": "このゲームについて",
+      "click": [
+        "#f-about"
+      ]
+    }
+  ]
+}
